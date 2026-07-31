@@ -78,6 +78,10 @@ def split_dataset(labels_csv_path=LABELS_CSV_PATH,
     df = drop_null_rows(df, images_dir=images_dir)
     print(f"[INFO] Rows after dropping nulls: {len(df)}/{before}")
 
+    if len(df) != before:
+        df.to_csv(labels_csv_path, index=False)
+        print(f"[INFO] Rewrote {labels_csv_path} without the dropped rows.")
+
     # Shuffle once, then cut into three contiguous blocks.
     df = df.sample(frac=1.0, random_state=random_seed).reset_index(drop=True)
 
