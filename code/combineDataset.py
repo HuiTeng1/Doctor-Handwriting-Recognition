@@ -7,11 +7,11 @@ import pandas as pd
 # ------------------------------------------------------------------
 # Paste the 6 full paths here (they can be anywhere, don't need a shared parent).
 SOURCE_FOLDERS = [
-    r"D:\AI\Doctor-Handwriting-Recognition\89",
-    r"D:\AI\Doctor-Handwriting-Recognition\RxHand Original",
-    r"D:\AI\Doctor-Handwriting-Recognition\Doctor’s Handwritten Prescription BD dataset\Testing",
-    r"D:\AI\Doctor-Handwriting-Recognition\Doctor’s Handwritten Prescription BD dataset\Training",
-    r"D:\AI\Doctor-Handwriting-Recognition\Doctor’s Handwritten Prescription BD dataset\Validation",
+    r"C:\Users\limhu\OneDrive\Documents\Coding Practice\AI\PreProcessing\Doctor Handwriting Recognition Dataset",
+    r"C:\Users\limhu\OneDrive\Documents\Coding Practice\AI\PreProcessing\RxHand Original",
+    r"C:\Users\limhu\OneDrive\Documents\Coding Practice\AI\PreProcessing\Doctor’s Handwritten Prescription BD dataset\Testing",
+    r"C:\Users\limhu\OneDrive\Documents\Coding Practice\AI\PreProcessing\Doctor’s Handwritten Prescription BD dataset\Training",
+    r"C:\Users\limhu\OneDrive\Documents\Coding Practice\AI\PreProcessing\Doctor’s Handwritten Prescription BD dataset\Validation",
 ]
 
 # Candidate column names to look for filename/text in each csv
