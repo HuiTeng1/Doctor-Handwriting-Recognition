@@ -7,11 +7,11 @@ import pandas as pd
 # ------------------------------------------------------------------
 # Paste the 6 full paths here (they can be anywhere, don't need a shared parent).
 SOURCE_FOLDERS = [
-    r"C:\Users\limhu\OneDrive\Documents\Coding Practice\AI\PreProcessing\Doctor Handwriting Recognition Dataset",
-    r"C:\Users\limhu\OneDrive\Documents\Coding Practice\AI\PreProcessing\RxHand Original",
-    r"C:\Users\limhu\OneDrive\Documents\Coding Practice\AI\PreProcessing\Doctor’s Handwritten Prescription BD dataset\Testing",
-    r"C:\Users\limhu\OneDrive\Documents\Coding Practice\AI\PreProcessing\Doctor’s Handwritten Prescription BD dataset\Training",
-    r"C:\Users\limhu\OneDrive\Documents\Coding Practice\AI\PreProcessing\Doctor’s Handwritten Prescription BD dataset\Validation",
+    r"D:\AI\Doctor-Handwriting-Recognition\89",
+    r"D:\AI\Doctor-Handwriting-Recognition\RxHand Original",
+    r"D:\AI\Doctor-Handwriting-Recognition\Doctor’s Handwritten Prescription BD dataset\Testing",
+    r"D:\AI\Doctor-Handwriting-Recognition\Doctor’s Handwritten Prescription BD dataset\Training",
+    r"D:\AI\Doctor-Handwriting-Recognition\Doctor’s Handwritten Prescription BD dataset\Validation",
 ]
 
 # Candidate column names to look for filename/text in each csv
@@ -68,6 +68,7 @@ def combine_folders(source_folders=SOURCE_FOLDERS,
                      copy_files=True):
     os.makedirs(output_images_dir, exist_ok=True)
     all_rows = []
+    image_counter = 1
 
     missing = [f for f in source_folders if not os.path.isdir(f)]
     if missing:
@@ -103,13 +104,15 @@ def combine_folders(source_folders=SOURCE_FOLDERS,
         for _, row in df.iterrows():
             old_name = row[filename_col]
             old_path = os.path.join(images_dir, old_name)
-            new_name = f"{folder_name}__{old_name}"
-            new_path = os.path.join(output_images_dir, new_name)
 
             if not os.path.isfile(old_path):
                 missing_count += 1
                 new_filenames.append(None)
                 continue
+
+            ext = os.path.splitext(old_name)[1].lower()
+            new_name = f"img_{image_counter}{ext}"
+            new_path = os.path.join(output_images_dir, new_name)
 
             if copy_files:
                 shutil.copy2(old_path, new_path)
@@ -117,6 +120,7 @@ def combine_folders(source_folders=SOURCE_FOLDERS,
                 shutil.move(old_path, new_path)
 
             new_filenames.append(new_name)
+            image_counter += 1
 
         out_df = pd.DataFrame({
             "filename": new_filenames,
