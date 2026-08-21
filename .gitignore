@@ -177,5 +177,36 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Project Datasets
-data/
+# ============================================================
+# Project data / generated artifacts
+# (large or regeneratable from the scripts next to them — not source code)
+# Checkpoints under final_code/ are deliberately NOT ignored (tracked in git),
+# EXCEPT the individual files below that exceed GitHub's 100MB hard push limit.
+# ============================================================
+
+# --- Files over GitHub's 100MB limit — git push will reject these outright.
+#     Needs a separate transfer (Git LFS, cloud storage, manual copy, etc.),
+#     not a normal git push. ---
+final_code/normal/checkpoint/trocr/model.safetensors                                  # 1273.9 MB
+final_code/doctor/checkpoints_trocr/baseline/checkpoint-3954/model.safetensors        # 1273.9 MB
+final_code/doctor/checkpoints_trocr/baseline/checkpoint-3954/optimizer.pt             # 2543.5 MB
+final_code/doctor/checkpoints_trocr/baseline/checkpoint-4833/model.safetensors        # 1273.9 MB
+final_code/doctor/checkpoints_trocr/baseline/checkpoint-4833/optimizer.pt             # 2543.5 MB
+final_code/doctor/checkpoints_trocr_pilot/baseline/final/model.safetensors            # 1273.9 MB
+final_code/doctor/checkpoints_trocr_pilot/clhaa/final/model.safetensors               # 1273.9 MB
+# Safety net for the same pattern anywhere else under final_code/ (e.g. if another
+# TrOCR pipeline gets added later) — these two filenames are always huge for TrOCR:
+final_code/**/model.safetensors
+final_code/**/optimizer.pt
+
+# --- final_code/normal/ (IAM pretrain stage) ---
+final_code/normal/dataset/I_Am_Dataset/
+
+# --- final_code/doctor/ (doctor finetune stage) ---
+final_code/doctor/data/Doctor/images/
+final_code/doctor/data/Doctor_clean/images/
+final_code/doctor/preprocessed_doctor/
+final_code/doctor/preprocessed_doctor_test/
+
+# --- previous_code/ (archived old versions, not part of the project going forward) ---
+previous_code/
