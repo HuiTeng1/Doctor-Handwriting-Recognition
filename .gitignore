@@ -180,33 +180,56 @@ __marimo__/
 # ============================================================
 # Project data / generated artifacts
 # (large or regeneratable from the scripts next to them — not source code)
-# Checkpoints under final_code/ are deliberately NOT ignored (tracked in git),
-# EXCEPT the individual files below that exceed GitHub's 100MB hard push limit.
+# Audited before the first real push to GitHub against its actual limits:
+#   - hard block: any single file over 100MB (a normal `git push` rejects it outright)
+#   - soft guidance: keep total repo size well under ~1GB for a healthy clone
+# Everything NOT listed below IS tracked normally: all source code, all small CSVs
+# (IAM/doctor splits, results, labels, cleaning/leakage reports), small config/
+# tokenizer/checkpoint-metadata files, and CRNN's own checkpoints (~21MB each, under
+# the limit, tracked on purpose).
 # ============================================================
 
-# --- Files over GitHub's 100MB limit — git push will reject these outright.
-#     Needs a separate transfer (Git LFS, cloud storage, manual copy, etc.),
-#     not a normal git push. ---
-final_code/normal/checkpoint/trocr/model.safetensors                                  # 1273.9 MB
-final_code/doctor/checkpoints_trocr/baseline/checkpoint-3954/model.safetensors        # 1273.9 MB
-final_code/doctor/checkpoints_trocr/baseline/checkpoint-3954/optimizer.pt             # 2543.5 MB
-final_code/doctor/checkpoints_trocr/baseline/checkpoint-4833/model.safetensors        # 1273.9 MB
-final_code/doctor/checkpoints_trocr/baseline/checkpoint-4833/optimizer.pt             # 2543.5 MB
-final_code/doctor/checkpoints_trocr_pilot/baseline/final/model.safetensors            # 1273.9 MB
-final_code/doctor/checkpoints_trocr_pilot/clhaa/final/model.safetensors               # 1273.9 MB
-# Safety net for the same pattern anywhere else under final_code/ (e.g. if another
-# TrOCR pipeline gets added later) — these two filenames are always huge for TrOCR:
+# --- Files over GitHub's 100MB hard limit — a normal `git push` will reject these.
+#     Needs a separate transfer (Git LFS, cloud storage, manual copy, etc.).
+#     Sizes (each ~1.27-2.54 GB): checkpoint/normal/trocr/model.safetensors;
+#     checkpoint/doctor/trocr/baseline/checkpoint-{3954,4833}/{model.safetensors,optimizer.pt};
+#     checkpoint/doctor/trocr_pilot/{baseline,clhaa}/final/model.safetensors ---
+final_code/checkpoint/normal/trocr/model.safetensors
+final_code/checkpoint/doctor/trocr/baseline/checkpoint-3954/model.safetensors
+final_code/checkpoint/doctor/trocr/baseline/checkpoint-3954/optimizer.pt
+final_code/checkpoint/doctor/trocr/baseline/checkpoint-4833/model.safetensors
+final_code/checkpoint/doctor/trocr/baseline/checkpoint-4833/optimizer.pt
+final_code/checkpoint/doctor/trocr_pilot/baseline/final/model.safetensors
+final_code/checkpoint/doctor/trocr_pilot/clhaa/final/model.safetensors
+# Safety net for the same pattern anywhere else under final_code/ (e.g. once TrOCR's
+# full finetune finishes and produces checkpoint/doctor/trocr/clhaa/final/, or any
+# future pipeline) — these two filenames are always huge for TrOCR, whichever
+# pipeline/checkpoint they're under, so catch them unconditionally:
 final_code/**/model.safetensors
 final_code/**/optimizer.pt
 
-# --- final_code/normal/ (IAM pretrain stage) ---
-final_code/normal/dataset/I_Am_Dataset/
+# --- Raw/derived image folders. No single file here is anywhere near 100MB, but each
+#     is thousands of individual files (2k-34k) - committing that many blows past the
+#     soft repo-size guidance and makes clones slow. All regenerable from the scripts
+#     documented in RUN_ORDER.md, given the right upstream data. Sizes: I_Am_Dataset/
+#     ~1.6GB/34k+ files; doctor_raw/images/ ~58MB/10,347 files; doctor_clean/images/
+#     ~57MB/10,050 files; preprocessed_doctor/ ~160MB/32,160 files;
+#     preprocessed_doctor_test/ ~11MB/2,010 files ---
+final_code/data/normal/I_Am_Dataset/
+final_code/data/doctor/doctor_raw/images/
+final_code/data/doctor/doctor_clean/images/
+final_code/data/doctor/preprocessed_doctor/
+final_code/data/doctor/preprocessed_doctor_test/
 
-# --- final_code/doctor/ (doctor finetune stage) ---
-final_code/doctor/data/Doctor/images/
-final_code/doctor/data/Doctor_clean/images/
-final_code/doctor/preprocessed_doctor/
-final_code/doctor/preprocessed_doctor_test/
+# --- combineDataset.py's 5 raw source folders, extracted directly into doctor_raw/
+# (see combineDataset.py's SOURCE_FOLDERS) - not this project's own output, just the
+# original downloads sitting alongside it, never meant to be committed ---
+final_code/data/doctor/doctor_raw/Doctor Handwriting Recognition Dataset/
+final_code/data/doctor/doctor_raw/RxHand Original/
+final_code/data/doctor/doctor_raw/Doctor’s Handwritten Prescription BD dataset/
 
-# --- previous_code/ (archived old versions, not part of the project going forward) ---
+# --- previous_code/ (archived old/superseded/scope-excluded code and checkpoints,
+# ~431 MB total, no single file over 50MB - technically pushable, but kept local-only
+# on purpose so the pushed repo stays clean; see previous_code/README.md for why each
+# item was archived rather than deleted) ---
 previous_code/

@@ -5,25 +5,32 @@ import pandas as pd
 # ------------------------------------------------------------------
 # CONFIG — only thing you MUST set
 # ------------------------------------------------------------------
-# It merged 5 raw, separately-downloaded dataset folders into data/Doctor/{images/,
-# labels.csv} - that merge has already happened once; its output (data/Doctor/) already
-# exists in this project. The 5 raw source folders below were the author's paths at the
-# time and won't exist on a different machine as-is - the folders themselves still exist
-# (kept outside this repo, e.g. on external storage), just not necessarily at this exact
-# path. If you need to re-run this script, update SOURCE_FOLDERS to wherever you've
-# placed those 5 folders on the current machine first.
+# It merges 5 raw, separately-downloaded dataset folders into this same doctor_raw/
+# folder's images/ + labels.csv - that merge has already happened once; the output
+# (images/ + labels.csv) already exists in this project. The 5 raw source folders are
+# expected to live right alongside that output, inside doctor_raw/ itself (see
+# SOURCE_FOLDERS below) - extract each of the original downloads there, using the exact
+# names below, before re-running this script. images/ and labels.csv are gitignored
+# already; the 5 raw source folders are gitignored too (see .gitignore) so they don't
+# get accidentally committed.
 #
 # If you're just setting this project up somewhere new and don't have those 5 raw
-# folders handy: you do NOT need to run this script. You need data/Doctor/images/ (the
+# folders handy: you do NOT need to run this script. You need doctor_raw/images/ (the
 # already-merged output, ~58MB / 10,347 files) handed to you directly (it's gitignored -
-# too large for git) and placed at final_code/doctor/data/Doctor/images/. labels.csv is
-# already tracked in git. Once images/ is in place, start from clean_doctor_dataset.py.
+# too large for git) and placed at final_code/data/doctor/doctor_raw/images/. labels.csv is
+# already tracked in git. Once images/ is in place, start from discover_doctor_duplicates.py.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(_HERE, "..", "..", "data", "doctor")
+OUTPUT_FOLDER = os.path.join(DATA_DIR, "doctor_raw")
+OUTPUT_IMAGES_DIR = os.path.join(OUTPUT_FOLDER, "images")
+OUTPUT_CSV_PATH = os.path.join(OUTPUT_FOLDER, "labels.csv")
+
 SOURCE_FOLDERS = [
-    r"C:\Users\limhu\OneDrive\Documents\Coding Practice\AI\PreProcessing\Doctor Handwriting Recognition Dataset",
-    r"C:\Users\limhu\OneDrive\Documents\Coding Practice\AI\PreProcessing\RxHand Original",
-    r"C:\Users\limhu\OneDrive\Documents\Coding Practice\AI\PreProcessing\Doctor’s Handwritten Prescription BD dataset\Testing",
-    r"C:\Users\limhu\OneDrive\Documents\Coding Practice\AI\PreProcessing\Doctor’s Handwritten Prescription BD dataset\Training",
-    r"C:\Users\limhu\OneDrive\Documents\Coding Practice\AI\PreProcessing\Doctor’s Handwritten Prescription BD dataset\Validation",
+    os.path.join(OUTPUT_FOLDER, "Doctor Handwriting Recognition Dataset"),
+    os.path.join(OUTPUT_FOLDER, "RxHand Original"),
+    os.path.join(OUTPUT_FOLDER, "Doctor’s Handwritten Prescription BD dataset", "Testing"),
+    os.path.join(OUTPUT_FOLDER, "Doctor’s Handwritten Prescription BD dataset", "Training"),
+    os.path.join(OUTPUT_FOLDER, "Doctor’s Handwritten Prescription BD dataset", "Validation"),
 ]
 
 # Candidate column names to look for filename/text in each csv
@@ -34,11 +41,6 @@ TEXT_COL_CANDIDATES = ["text", "label", "labels", "transcription", "gt", "ground
                         "medicine_name", "generic_name", "word"]
 
 IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff")
-
-DATA_DIR = "data"
-OUTPUT_FOLDER = os.path.join(DATA_DIR, "Doctor")
-OUTPUT_IMAGES_DIR = os.path.join(OUTPUT_FOLDER, "images")
-OUTPUT_CSV_PATH = os.path.join(OUTPUT_FOLDER, "labels.csv")
 
 
 def find_csv(subfolder):

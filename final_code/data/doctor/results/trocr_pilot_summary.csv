@@ -1,0 +1,3 @@
+pipeline,best_val_cer,best_val_wer,final_model_dir
+baseline,0.2067260138476755,0.4233128834355828,D:\AI\Doctor-Handwriting-Recognition\final_code\checkpoint\doctor\trocr_pilot\baseline\final
+clhaa,0.218595450049456,0.4539877300613497,D:\AI\Doctor-Handwriting-Recognition\final_code\checkpoint\doctor\trocr_pilot\clhaa\final

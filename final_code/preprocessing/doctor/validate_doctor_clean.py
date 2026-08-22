@@ -1,5 +1,5 @@
 """
-Produces a full audit report for the already-cleaned data/Doctor_clean/, plus all the
+Produces a full audit report for the already-cleaned doctor_clean/, plus all the
 validation checks required by section 11. Doesn't redo any cleaning decisions - just
 verifies/tallies the existing results, and aborts if any single check fails.
 """
@@ -12,8 +12,8 @@ from PIL import Image
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.join(_HERE, "..")
-RAW_DIR = os.path.join(PROJECT_ROOT, "data", "Doctor")
-CLEAN_DIR = os.path.join(PROJECT_ROOT, "data", "Doctor_clean")
+RAW_DIR = os.path.join(PROJECT_ROOT, "..", "data", "doctor", "doctor_raw")
+CLEAN_DIR = os.path.join(PROJECT_ROOT, "..", "data", "doctor", "doctor_clean")
 CLEAN_IMG_DIR = os.path.join(CLEAN_DIR, "images")
 
 
@@ -44,7 +44,7 @@ def main():
         })
     source_stats_df = pd.DataFrame(source_stats)
 
-    # ---------- Section 10: overall statistics (recomputed from raw data/Doctor, not reusing intermediate counts) ----------
+    # ---------- Section 10: overall statistics (recomputed from raw Doctor/, not reusing intermediate counts) ----------
     print("[validate] Computing content hashes for the raw dataset (for unique/duplicate counts)...")
     raw_hashes = [content_hash(os.path.join(RAW_DIR, "images", fn)) for fn in raw_df["filename"]]
     raw_df = raw_df.assign(content_hash=raw_hashes)
@@ -56,7 +56,7 @@ def main():
         "unique_image_count": unique_image_count,
         "duplicate_groups": int(duplicate_groups),
         "images_removed": len(raw_df) - len(clean_df),
-        "label_conflicts_found_total": 6,  # already resolved manually in resolve_doctor_label_conflicts.py
+        "label_conflicts_found_total": 6,  # already resolved manually in resolve_doctor_duplicates.py
         "label_conflicts_remaining": len(conflicts_df),
     }
 

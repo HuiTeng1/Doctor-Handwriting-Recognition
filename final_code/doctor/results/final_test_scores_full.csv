@@ -1,2 +1,0 @@
-model,winner_pipeline,val_cer,test_cer,test_exact_match_pct,n
-CRNN,baseline,0.2247378975152969,0.2308947890996933,35.4726368159204,2010

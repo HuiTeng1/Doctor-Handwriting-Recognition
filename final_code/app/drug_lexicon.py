@@ -7,14 +7,14 @@ trusting either one alone.
 
 Two vocabulary sources, kept both for comparison:
 
-- v2 (default): medical_name_dataset/all_medicine_and_drug_price_data(20k)_Bangladesh.csv
+- v2 (default): data/medical_name_dataset/all_medicine_and_drug_price_data(20k)_Bangladesh.csv
   - a real, independently-sourced Bangladesh medicine database (MedEasy platform, via
   Kaggle - see DATA_PROVENANCE.md), 19,957 rows / 12,907 unique brand names, each with
   category (dosage form), generic name, strength, manufacturer, and price. This is an
   actual external reference, not derived from this project's own training data - fuzzy
   matches against it aren't "cheating" by reusing what the model was trained to output.
 
-- v1 (legacy): doctor/data/Doctor_clean/labels.csv's deduplicated text column (1,871
+- v1 (legacy): data/doctor/doctor_clean/labels.csv's deduplicated text column (1,871
   names). This is the training vocabulary itself, kept only as a comparison baseline -
   matching against it is somewhat circular (of course the model's output is close to
   something it was trained on), so it's not used by the app by default.
@@ -26,8 +26,8 @@ import pandas as pd
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_MEDICINE_CSV = os.path.join(
-    _HERE, "..", "medical_name_dataset", "all_medicine_and_drug_price_data(20k)_Bangladesh.csv")
-LEGACY_LABELS_CSV = os.path.join(_HERE, "..", "doctor", "data", "Doctor_clean", "labels.csv")
+    _HERE, "..", "data", "medical_name_dataset", "all_medicine_and_drug_price_data(20k)_Bangladesh.csv")
+LEGACY_LABELS_CSV = os.path.join(_HERE, "..", "data", "doctor", "doctor_clean", "labels.csv")
 
 
 def load_vocabulary(medicine_csv=DEFAULT_MEDICINE_CSV):

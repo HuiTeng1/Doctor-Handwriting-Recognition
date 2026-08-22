@@ -7,3 +7,5 @@ transformers==4.46.3
 ctc-decoder==1.0.1
 pillow==12.2.0
 pandas==3.0.5
+opencv-python
+scikit-image

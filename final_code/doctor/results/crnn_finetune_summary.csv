@@ -1,5 +1,0 @@
-pipeline,best_val_cer,stopped_epoch,best_ckpt
-baseline,0.2247378975152969,60,D:\AI\Doctor-Handwriting-Recognition\final_code\doctor\checkpoints\baseline\epoch=54-val-loss=0.869-val-char-error-rate=0.2247.ckpt
-clhaa,0.2338221669197082,93,D:\AI\Doctor-Handwriting-Recognition\final_code\doctor\checkpoints\clhaa\epoch=87-val-loss=0.892-val-char-error-rate=0.2338.ckpt
-fajardo,0.2741649448871612,68,D:\AI\Doctor-Handwriting-Recognition\final_code\doctor\checkpoints\fajardo\epoch=62-val-loss=1.045-val-char-error-rate=0.2742.ckpt
-benitez,0.2836242914199829,103,D:\AI\Doctor-Handwriting-Recognition\final_code\doctor\checkpoints\benitez\epoch=97-val-loss=1.080-val-char-error-rate=0.2836.ckpt

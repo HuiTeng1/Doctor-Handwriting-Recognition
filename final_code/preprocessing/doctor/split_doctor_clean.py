@@ -1,19 +1,24 @@
 """
-Final 70/10/20 split of data/Doctor_clean/labels.csv, grouped by image content hash
+Final 70/10/20 split of doctor_clean/labels.csv, grouped by image content hash
 (a group can't be split across sets). Automatically verifies the hash sets of
 train/val/test don't overlap once done.
 """
 import hashlib
 import os
 import random
+import sys
 
 import numpy as np
 import pandas as pd
 from PIL import Image
 
+# Windows consoles default to cp1252, which can't encode the "∩" used in the leakage
+# check output below - force utf-8 so a plain `python split_doctor_clean.py` doesn't crash.
+sys.stdout.reconfigure(encoding="utf-8")
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.join(_HERE, "..")
-CLEAN_DIR = os.path.join(PROJECT_ROOT, "data", "Doctor_clean")
+CLEAN_DIR = os.path.join(PROJECT_ROOT, "..", "data", "doctor", "doctor_clean")
 IMG_DIR = os.path.join(CLEAN_DIR, "images")
 
 TRAIN_RATIO, VAL_RATIO, TEST_RATIO = 0.7, 0.1, 0.2
