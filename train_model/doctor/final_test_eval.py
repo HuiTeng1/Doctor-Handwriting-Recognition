@@ -87,7 +87,12 @@ FINAL_CANDIDATES = {"baseline", "clhaa"}  # fajardo/benitez are pilot-only refer
 def pick_candidates(results_path, path_col):
     """Every row that's still a live final candidate (baseline/clhaa - see
     FINAL_CANDIDATES), each flagged with whether it's the one the validation-set CER
-    picked as the winner. Returns a list of (pipeline, val_cer, ckpt_path, is_winner)."""
+    picked as the winner. Winner selection uses best_val_cer (Lightning's per-batch-averaged
+    training-time metric) - val_cer_jiwer, where present (CRNN only), is a second CER over
+    the same val set computed the same way as test_cer (jiwer, pooled over every prediction),
+    carried through purely for reporting since it's the number actually comparable to
+    test_cer - it does not affect which pipeline is picked as the winner.
+    Returns a list of (pipeline, val_cer, val_cer_jiwer, ckpt_path, is_winner)."""
     try:
         df = pd.read_csv(results_path)
     except (OSError, pd.errors.ParserError) as e:
@@ -96,8 +101,10 @@ def pick_candidates(results_path, path_col):
     if df.empty:
         raise ValueError(f"{results_path}: none of {FINAL_CANDIDATES} found - nothing eligible to evaluate")
     winner_pipeline = df.loc[df["best_val_cer"].idxmin(), "pipeline"]
+    has_jiwer_col = "best_val_cer_jiwer" in df.columns
     return [
-        (row["pipeline"], row["best_val_cer"], to_absolute_path(row[path_col]), row["pipeline"] == winner_pipeline)
+        (row["pipeline"], row["best_val_cer"], row["best_val_cer_jiwer"] if has_jiwer_col else None,
+         to_absolute_path(row[path_col]), row["pipeline"] == winner_pipeline)
         for _, row in df.iterrows()
     ]
 
@@ -266,7 +273,7 @@ def run_eval(crnn_results_path, trocr_results_path, out_filename, include_wer=Tr
         only candidate (e.g. baseline before clhaa's training finished) keeps its
         is_winner=True forever, even after a later candidate with a lower val_cer
         (e.g. clhaa) is added - two rows would then both read is_winner=True."""
-        current_winner = {pipeline: is_winner for pipeline, _, _, is_winner in candidates}
+        current_winner = {pipeline: is_winner for pipeline, _, _, _, is_winner in candidates}
         changed = False
         for r in records:
             if r["model"] == model_name and r["pipeline"] in current_winner:
@@ -286,8 +293,8 @@ def run_eval(crnn_results_path, trocr_results_path, out_filename, include_wer=Tr
         if refresh_winners("CRNN", crnn_candidates):
             save()
         if winners_only:
-            crnn_candidates = [c for c in crnn_candidates if c[3]]
-        for crnn_pipeline, crnn_val_cer, crnn_ckpt, is_winner in crnn_candidates:
+            crnn_candidates = [c for c in crnn_candidates if c[4]]
+        for crnn_pipeline, crnn_val_cer, crnn_val_cer_jiwer, crnn_ckpt, is_winner in crnn_candidates:
             if ("CRNN", crnn_pipeline) in done_keys:
                 print(f"[final_test] CRNN {crnn_pipeline}: already in {out_filename}, skipping")
                 continue
@@ -295,6 +302,7 @@ def run_eval(crnn_results_path, trocr_results_path, out_filename, include_wer=Tr
             crnn_cer, crnn_wer, crnn_acc, crnn_n = eval_crnn(crnn_pipeline, crnn_ckpt, device="cpu")
             print(f"[final_test] CRNN  ({crnn_pipeline}) test CER={crnn_cer:.4f}  test WER={crnn_wer:.4f}  exact-match={crnn_acc:.2f}%  n={crnn_n}")
             record = {"model": "CRNN", "pipeline": crnn_pipeline, "is_winner": is_winner, "val_cer": crnn_val_cer,
+                      "val_cer_jiwer": crnn_val_cer_jiwer,
                       "test_cer": crnn_cer, "test_exact_match_pct": crnn_acc, "n": crnn_n}
             if include_wer:
                 record["test_wer"] = crnn_wer
@@ -308,8 +316,8 @@ def run_eval(crnn_results_path, trocr_results_path, out_filename, include_wer=Tr
         if refresh_winners("TrOCR", trocr_candidates):
             save()
         if winners_only:
-            trocr_candidates = [c for c in trocr_candidates if c[3]]
-        for trocr_pipeline, trocr_val_cer, trocr_ckpt, is_winner in trocr_candidates:
+            trocr_candidates = [c for c in trocr_candidates if c[4]]
+        for trocr_pipeline, trocr_val_cer, trocr_val_cer_jiwer, trocr_ckpt, is_winner in trocr_candidates:
             if ("TrOCR", trocr_pipeline) in done_keys:
                 print(f"[final_test] TrOCR {trocr_pipeline}: already in {out_filename}, skipping")
                 continue
@@ -317,6 +325,7 @@ def run_eval(crnn_results_path, trocr_results_path, out_filename, include_wer=Tr
             trocr_cer, trocr_wer, trocr_acc, trocr_n = eval_trocr(trocr_pipeline, trocr_ckpt, device="cpu")
             print(f"[final_test] TrOCR ({trocr_pipeline}) test CER={trocr_cer:.4f}  test WER={trocr_wer:.4f}  exact-match={trocr_acc:.2f}%  n={trocr_n}")
             record = {"model": "TrOCR", "pipeline": trocr_pipeline, "is_winner": is_winner, "val_cer": trocr_val_cer,
+                      "val_cer_jiwer": trocr_val_cer_jiwer,
                       "test_cer": trocr_cer, "test_exact_match_pct": trocr_acc, "n": trocr_n}
             if include_wer:
                 record["test_wer"] = trocr_wer

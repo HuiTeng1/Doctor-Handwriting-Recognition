@@ -289,19 +289,29 @@ def run_crnn_all(train_df=None, val_df=None, ckpt_root=None, results_path=None, 
             print(f"[crnn] {pipeline_name}: found interrupted progress, resuming from {os.path.basename(resume_ckpt)}")
         trainer.fit(train_module, data_module, ckpt_path=resume_ckpt)
 
+        # best_val_cer: PyTorch Lightning's own "val-char-error-rate" metric (the one
+        # checkpoint selection/early stopping actually watch) - averaged per-batch by
+        # Lightning's on_epoch=True reduction, NOT a single pass over the whole val set.
+        # best_val_cer_jiwer: a second, separate CER computed by evaluate_cer_wer() the
+        # same way test_cer is computed (jiwer over every val prediction concatenated
+        # together) - the number that's actually comparable to Table 12's Test CER
+        # column, since the two use identical methodology. The two differ by a few
+        # tenths of a percentage point purely from batch-averaging vs pooling, not from
+        # any bug - both are "real", they just answer slightly different questions.
         best_cer = checkpoint_callback.best_model_score
         best_cer = float(best_cer) if best_cer is not None else None
 
         best_wer = None
+        best_cer_jiwer = None
         if checkpoint_callback.best_model_path:
-            _, best_wer = evaluate_cer_wer(checkpoint_callback.best_model_path, val_df, img_dir, hparams)
+            best_cer_jiwer, best_wer = evaluate_cer_wer(checkpoint_callback.best_model_path, val_df, img_dir, hparams)
 
         with open(done_flag, "w") as f:
             f.write("done")
 
         return {
-            "pipeline": pipeline_name, "best_val_cer": best_cer, "best_val_wer": best_wer,
-            "stopped_epoch": trainer.current_epoch,
+            "pipeline": pipeline_name, "best_val_cer": best_cer, "best_val_cer_jiwer": best_cer_jiwer,
+            "best_val_wer": best_wer, "stopped_epoch": trainer.current_epoch,
             "best_ckpt": to_relative_path(checkpoint_callback.best_model_path),
         }
 

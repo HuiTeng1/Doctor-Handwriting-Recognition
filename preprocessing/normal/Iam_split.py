@@ -55,3 +55,29 @@ def extract_images(dfs):
             with zf.open(member) as src, open(os.path.join(IMG_DIR, fn), 'wb') as dst:
                 dst.write(src.read())
     print("[iam_split] Image extraction complete")
+
+
+if __name__ == '__main__':
+    # Standalone entry point: extracts every image referenced by the CRNN and/or TrOCR
+    # IAM splits in one go, so a fresh machine with just iam_words.zip + words_new.txt
+    # (and the split CSVs pulled in from git) doesn't need to run one of the four
+    # downstream training/test scripts just to trigger extraction.
+    # Usage:
+    #     cd preprocessing/normal
+    #     PYTHONIOENCODING=utf-8 py -3.12 -u Iam_split.py
+    dfs = []
+    try:
+        dfs.extend(load_crnn_splits())
+    except FileNotFoundError as e:
+        print(f"[iam_split] Skipping CRNN splits: {e}")
+    try:
+        dfs.extend(load_trocr_splits())
+    except FileNotFoundError as e:
+        print(f"[iam_split] Skipping TrOCR splits: {e}")
+
+    if not dfs:
+        raise FileNotFoundError(
+            "No split CSVs found under data/normal/crnn/ or data/normal/trocr/ - "
+            "nothing to extract. These should come from git, not be regenerated here."
+        )
+    extract_images(dfs)
