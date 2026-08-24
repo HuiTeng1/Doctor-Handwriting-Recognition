@@ -1,0 +1,5 @@
+pipeline,best_val_cer,best_val_wer,stopped_epoch,best_ckpt
+baseline,0.4035608172416687,0.8711656441717791,35,checkpoint\doctor\crnn_pilot\baseline\epoch=29-val-loss=1.654-val-char-error-rate=0.4036.ckpt
+clhaa,0.4540059268474579,0.9079754601226993,46,checkpoint\doctor\crnn_pilot\clhaa\epoch=40-val-loss=1.810-val-char-error-rate=0.4540.ckpt
+fajardo,0.4945598244667053,0.9570552147239264,34,checkpoint\doctor\crnn_pilot\fajardo\epoch=28-val-loss=1.953-val-char-error-rate=0.4946.ckpt
+benitez,0.5103857517242432,0.9754601226993864,55,checkpoint\doctor\crnn_pilot\benitez\epoch=49-val-loss=2.003-val-char-error-rate=0.5104.ckpt

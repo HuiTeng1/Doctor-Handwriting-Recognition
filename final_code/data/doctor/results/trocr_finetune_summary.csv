@@ -1,2 +1,0 @@
-pipeline,best_val_cer,best_val_wer,final_model_dir
-baseline,0.11838524342304203,0.29935125115848005,D:\AI\Doctor-Handwriting-Recognition\final_code\checkpoint\doctor\trocr\baseline\final

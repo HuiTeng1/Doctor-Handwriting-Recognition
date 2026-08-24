@@ -187,26 +187,23 @@ __marimo__/
 # (IAM/doctor splits, results, labels, cleaning/leakage reports), small config/
 # tokenizer/checkpoint-metadata files, and CRNN's own checkpoints (~21MB each, under
 # the limit, tracked on purpose).
+# NOTE: the project used to live one level down, under final_code/ - that folder was
+# flattened away (everything moved up into the repo root) on 2026-08-24, so every
+# pattern below is now relative to the repo root directly, not final_code/. previous_code/
+# and log_file/ were moved OUT of the repo entirely at the same time (now siblings of
+# this repo folder), so neither needs an entry here anymore.
 # ============================================================
 
 # --- Files over GitHub's 100MB hard limit — a normal `git push` will reject these.
 #     Needs a separate transfer (Git LFS, cloud storage, manual copy, etc.).
-#     Sizes (each ~1.27-2.54 GB): checkpoint/normal/trocr/model.safetensors;
-#     checkpoint/doctor/trocr/baseline/checkpoint-{3954,4833}/{model.safetensors,optimizer.pt};
-#     checkpoint/doctor/trocr_pilot/{baseline,clhaa}/final/model.safetensors ---
-final_code/checkpoint/normal/trocr/model.safetensors
-final_code/checkpoint/doctor/trocr/baseline/checkpoint-3954/model.safetensors
-final_code/checkpoint/doctor/trocr/baseline/checkpoint-3954/optimizer.pt
-final_code/checkpoint/doctor/trocr/baseline/checkpoint-4833/model.safetensors
-final_code/checkpoint/doctor/trocr/baseline/checkpoint-4833/optimizer.pt
-final_code/checkpoint/doctor/trocr_pilot/baseline/final/model.safetensors
-final_code/checkpoint/doctor/trocr_pilot/clhaa/final/model.safetensors
-# Safety net for the same pattern anywhere else under final_code/ (e.g. once TrOCR's
-# full finetune finishes and produces checkpoint/doctor/trocr/clhaa/final/, or any
-# future pipeline) — these two filenames are always huge for TrOCR, whichever
-# pipeline/checkpoint they're under, so catch them unconditionally:
-final_code/**/model.safetensors
-final_code/**/optimizer.pt
+#     Every TrOCR model.safetensors is ~1.3GB, wherever it lives - caught unconditionally
+#     below rather than listed path-by-path, so a newly-finished pipeline's checkpoint
+#     (or a resumed numbered checkpoint-N/ that briefly reappears) is never missed.
+#     Currently on disk (~1.3GB each): checkpoint/normal/trocr/model.safetensors;
+#     checkpoint/doctor/trocr/{baseline,clhaa}/final/model.safetensors;
+#     checkpoint/doctor/trocr_pilot/{baseline,clhaa,fajardo,benitez}/final/model.safetensors ---
+**/model.safetensors
+**/optimizer.pt
 
 # --- Raw/derived image folders. No single file here is anywhere near 100MB, but each
 #     is thousands of individual files (2k-34k) - committing that many blows past the
@@ -214,22 +211,23 @@ final_code/**/optimizer.pt
 #     documented in RUN_ORDER.md, given the right upstream data. Sizes: I_Am_Dataset/
 #     ~1.6GB/34k+ files; doctor_raw/images/ ~58MB/10,347 files; doctor_clean/images/
 #     ~57MB/10,050 files; preprocessed_doctor/ ~160MB/32,160 files;
-#     preprocessed_doctor_test/ ~11MB/2,010 files ---
-final_code/data/normal/I_Am_Dataset/
-final_code/data/doctor/doctor_raw/images/
-final_code/data/doctor/doctor_clean/images/
-final_code/data/doctor/preprocessed_doctor/
-final_code/data/doctor/preprocessed_doctor_test/
+#     preprocessed_doctor_test/ ~25MB/4,020 files (baseline+clhaa - both models' winners) ---
+data/normal/I_Am_Dataset/
+data/doctor/doctor_raw/images/
+data/doctor/doctor_clean/images/
+data/doctor/preprocessed_doctor/
+data/doctor/preprocessed_doctor_test/
 
-# --- combineDataset.py's 5 raw source folders, extracted directly into doctor_raw/
+# --- combineDataset.py's 3 raw source folders, extracted directly into doctor_raw/
 # (see combineDataset.py's SOURCE_FOLDERS) - not this project's own output, just the
-# original downloads sitting alongside it, never meant to be committed ---
-final_code/data/doctor/doctor_raw/Doctor Handwriting Recognition Dataset/
-final_code/data/doctor/doctor_raw/RxHand Original/
-final_code/data/doctor/doctor_raw/Doctor’s Handwritten Prescription BD dataset/
+# original downloads sitting alongside it, never meant to be committed. "89" is the
+# extracted "Doctor Handwriting Recognition Dataset" zip - named "89" (not the zip's own
+# name) to match the `source` value already baked into the live labels.csv - see
+# combineDataset.py's SOURCE_FOLDERS comment for why. ---
+data/doctor/doctor_raw/89/
+data/doctor/doctor_raw/RxHand Original/
+data/doctor/doctor_raw/Doctor’s Handwritten Prescription BD dataset/
 
-# --- previous_code/ (archived old/superseded/scope-excluded code and checkpoints,
-# ~431 MB total, no single file over 50MB - technically pushable, but kept local-only
-# on purpose so the pushed repo stays clean; see previous_code/README.md for why each
-# item was archived rather than deleted) ---
-previous_code/
+# --- the 3 raw zips themselves, if placed directly in doctor_raw/ for
+# ensure_source_folders_extracted() to auto-unzip - also never meant to be committed ---
+data/doctor/doctor_raw/*.zip

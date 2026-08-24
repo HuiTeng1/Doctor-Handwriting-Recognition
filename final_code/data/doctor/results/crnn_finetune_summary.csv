@@ -1,3 +1,0 @@
-pipeline,best_val_cer,stopped_epoch,best_ckpt
-baseline,0.2247378975152969,60,D:\AI\Doctor-Handwriting-Recognition\final_code\checkpoint\doctor\crnn\baseline\epoch=54-val-loss=0.869-val-char-error-rate=0.2247.ckpt
-clhaa,0.2338221669197082,93,D:\AI\Doctor-Handwriting-Recognition\final_code\checkpoint\doctor\crnn\clhaa\epoch=87-val-loss=0.892-val-char-error-rate=0.2338.ckpt

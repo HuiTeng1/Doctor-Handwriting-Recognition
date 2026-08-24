@@ -1,0 +1,3 @@
+pipeline,best_val_cer,best_val_wer,final_model_dir
+baseline,0.118385243423042,0.29935125115848,checkpoint\doctor\trocr\baseline\final
+clhaa,0.0828545509525249,0.2177942539388322,checkpoint\doctor\trocr\clhaa\final
