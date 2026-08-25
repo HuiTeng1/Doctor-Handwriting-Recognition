@@ -80,6 +80,38 @@ CHECKS = [
         (os.path.join(_HERE, "checkpoint", "doctor", "trocr_pilot", "fajardo", "final", "model.safetensors"), "file", None),
         (os.path.join(_HERE, "checkpoint", "doctor", "trocr_pilot", "benitez", "final", "model.safetensors"), "file", None),
     ]),
+    ("Training completion markers (DONE.txt - written once a stage's training loop finishes; "
+     "confirms both machines actually finished training, not just that git pull succeeded)", [
+        (os.path.join(_HERE, "checkpoint", "normal", "crnn", "DONE.txt"), "file", None),
+        (os.path.join(_HERE, "checkpoint", "doctor", "crnn", "baseline", "DONE.txt"), "file", None),
+        (os.path.join(_HERE, "checkpoint", "doctor", "crnn", "clhaa", "DONE.txt"), "file", None),
+        (os.path.join(_HERE, "checkpoint", "doctor", "crnn_pilot", "baseline", "DONE.txt"), "file", None),
+        (os.path.join(_HERE, "checkpoint", "doctor", "crnn_pilot", "clhaa", "DONE.txt"), "file", None),
+        (os.path.join(_HERE, "checkpoint", "doctor", "crnn_pilot", "fajardo", "DONE.txt"), "file", None),
+        (os.path.join(_HERE, "checkpoint", "doctor", "crnn_pilot", "benitez", "DONE.txt"), "file", None),
+        (os.path.join(_HERE, "checkpoint", "doctor", "trocr", "baseline", "DONE.txt"), "file", None),
+        (os.path.join(_HERE, "checkpoint", "doctor", "trocr", "clhaa", "DONE.txt"), "file", None),
+        (os.path.join(_HERE, "checkpoint", "doctor", "trocr_pilot", "baseline", "DONE.txt"), "file", None),
+        (os.path.join(_HERE, "checkpoint", "doctor", "trocr_pilot", "clhaa", "DONE.txt"), "file", None),
+        (os.path.join(_HERE, "checkpoint", "doctor", "trocr_pilot", "fajardo", "DONE.txt"), "file", None),
+        (os.path.join(_HERE, "checkpoint", "doctor", "trocr_pilot", "benitez", "DONE.txt"), "file", None),
+    ]),
+    ("CRNN checkpoints (git-tracked, ~21MB each - should come through git pull automatically; "
+     "checked here anyway to catch an incomplete/partial pull)", [
+        (os.path.join(_HERE, "checkpoint", "normal", "crnn", "last.ckpt"), "file", None),
+        (os.path.join(_HERE, "checkpoint", "doctor", "crnn", "baseline", "last.ckpt"), "file", None),
+        (os.path.join(_HERE, "checkpoint", "doctor", "crnn", "clhaa", "last.ckpt"), "file", None),
+    ]),
+    ("Final result CSVs (git-tracked - the numbers actually cited in the report; "
+     "presence here confirms both machines are looking at the same finished results)", [
+        (os.path.join(_HERE, "data", "doctor", "results", "crnn_finetune_summary.csv"), "file", None),
+        (os.path.join(_HERE, "data", "doctor", "results", "trocr_finetune_summary.csv"), "file", None),
+        (os.path.join(_HERE, "data", "doctor", "results", "crnn_pilot_summary.csv"), "file", None),
+        (os.path.join(_HERE, "data", "doctor", "results", "trocr_pilot_summary.csv"), "file", None),
+        (os.path.join(_HERE, "data", "doctor", "results", "pilot_combined_ranking.csv"), "file", None),
+        (os.path.join(_HERE, "data", "doctor", "results", "final_test_scores_full.csv"), "file", None),
+        (os.path.join(_HERE, "data", "doctor", "results", "inference_speed_benchmark_cpu.csv"), "file", None),
+    ]),
 ]
 
 

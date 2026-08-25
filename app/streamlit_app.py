@@ -10,14 +10,11 @@ match in a mock drug-name database (see drug_lexicon.py - an independent, extern
 Bangladesh medicine database, not derived from this project's own training data).
 
 No training happens here - this only loads already-finetuned checkpoints and runs
-inference on whatever image is uploaded. CRNN currently has both `baseline` and `clhaa`
-as completed full finetunes (see `checkpoint/doctor/crnn/{baseline,clhaa}/DONE.txt`), so
-its preprocessing toggle is fully live. TrOCR's `baseline` is now a completed full
-finetune too (stopped at epoch 9, its recorded best - see `KNOWN_ISSUES.md`), but `clhaa`
-isn't done yet, so TrOCR's preprocessing toggle stays disabled until
-`checkpoint/doctor/trocr/clhaa/` also has its own `DONE.txt` - until then TrOCR always
-runs its full-finetune `baseline` checkpoint (falling back further to the 15%-data pilot
-checkpoint only if even that isn't present).
+inference on whatever image is uploaded. Both CRNN and TrOCR now have `baseline` and
+`clhaa` as completed full finetunes (see `checkpoint/doctor/{crnn,trocr}/{baseline,clhaa}/
+DONE.txt`), so the preprocessing toggle is fully live for both - each model reloads its
+matching pipeline's checkpoint the moment the toggle changes, falling back to that same
+pipeline's 15%-data pilot checkpoint only if a given full finetune isn't present.
 
 Usage:
     cd app
@@ -39,7 +36,7 @@ _CRNN_DIR = os.path.join(_HERE, "..", "train_model", "normal", "crnn")
 _PIPELINES_DIR = os.path.join(_HERE, "..", "train_model", "doctor", "preprocessing")
 _CRNN_CKPT_ROOT = os.path.join(_HERE, "..", "checkpoint", "doctor", "crnn")
 _TROCR_CKPT_ROOT = os.path.join(_HERE, "..", "checkpoint", "doctor", "trocr")
-_TROCR_PILOT_CKPT_DIR = os.path.join(_HERE, "..", "checkpoint", "doctor", "trocr_pilot", "baseline", "final")
+_TROCR_PILOT_CKPT_ROOT = os.path.join(_HERE, "..", "checkpoint", "doctor", "trocr_pilot")
 _CRNN_RESULTS_CSV = os.path.join(_HERE, "..", "data", "doctor", "results", "crnn_finetune_summary.csv")
 _TROCR_RESULTS_CSV = os.path.join(_HERE, "..", "data", "doctor", "results", "trocr_finetune_summary.csv")
 
@@ -52,7 +49,7 @@ sys.path.insert(0, _PIPELINES_DIR)
 from pipelines import apply_baseline, apply_clhaa  # noqa: E402
 
 sys.path.insert(0, _HERE)
-from drug_lexicon import load_vocabulary, load_variants, suggest_corrections  # noqa: E402
+from drug_lexicon import load_vocabulary, load_variants, verify_against_database, levenshtein_distance  # noqa: E402
 
 INPUT_HEIGHT, INPUT_WIDTH = 36, 324
 
@@ -67,9 +64,13 @@ CRNN_TRANSFORMS = Compose([
 ])
 
 # Component-level styling only - the page background, inputs, toggle, etc. come from
-# .streamlit/config.toml (primaryColor = baby blue). Keep both files together.
+# .streamlit/config.toml (primaryColor = teal). Keep both files together.
+# Palette/type follows the team's slide deck: navy background, teal accent dot, serif
+# display headings (Playfair Display) over sans-serif body copy (Inter).
 CUSTOM_CSS = """
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
+
 /* Hide Streamlit's own chrome: top toolbar (Deploy button + menu), the sidebar
    collapse control (this app doesn't use a sidebar), and the little anchor-link
    icon Streamlit attaches to every heading. */
@@ -81,16 +82,30 @@ header[data-testid="stHeader"] { display: none; }
 [data-testid="stHeaderActionElements"] { display: none !important; }
 h1 a, h2 a, h3 a, h4 a, h5 a, h6 a { display: none !important; }
 
+html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+h1, h2, h3, h4, .app-header h1 { font-family: 'Playfair Display', serif; }
+
+/* Small teal dot used throughout the deck as an accent marker next to headings. */
+.dot {
+    display: inline-block;
+    width: .5rem;
+    height: .5rem;
+    border-radius: 50%;
+    background: #2dd4bf;
+    margin-right: .5rem;
+    vertical-align: middle;
+}
+
 .app-header {
-    padding: 1.4rem 1.6rem;
+    padding: 1.6rem 1.8rem;
     border-radius: 24px;
-    background: linear-gradient(135deg, #0d3a52 0%, #6fb8e0 100%);
+    background: linear-gradient(135deg, #0b1a33 0%, #1c6f6a 100%);
     color: #ffffff;
     margin-bottom: 1.25rem;
-    box-shadow: 0 6px 24px rgba(137, 207, 240, 0.25);
+    box-shadow: 0 6px 24px rgba(45, 212, 191, 0.18);
 }
-.app-header h1 { margin: 0; font-size: 1.7rem; }
-.app-header p { margin: .35rem 0 0 0; opacity: .88; font-size: .9rem; }
+.app-header h1 { margin: 0; font-size: 1.8rem; font-weight: 700; }
+.app-header p { margin: .45rem 0 0 0; opacity: .85; font-size: .92rem; font-family: 'Inter', sans-serif; }
 
 /* Two side-by-side frames - left_frame (upload) and right_frame (result / mock-db /
    forms, stacked with dividers inside the ONE frame). Targets the container's own
@@ -99,29 +114,47 @@ h1 a, h2 a, h3 a, h4 a, h5 a, h6 a { display: none !important; }
    an open-a-<div>-then-close-it-later approach, which silently fails to contain
    anything - each st.markdown call auto-closes its own HTML independently, it doesn't
    leak an open tag into sibling elements). */
-.st-key-left_frame, .st-key-right_frame {
+.st-key-left_frame, .st-key-right_frame,
+.st-key-compare_left_frame, .st-key-compare_right_frame {
+    background: #132646 !important;
     border-radius: 20px !important;
-    box-shadow: 0 4px 16px rgba(137, 207, 240, 0.08);
-    border-color: #26313a !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    border-color: rgba(45, 212, 191, 0.25) !important;
 }
-.st-key-left_frame h4, .st-key-right_frame h4 {
+.st-key-left_frame h4, .st-key-right_frame h4,
+.st-key-compare_left_frame h4, .st-key-compare_right_frame h4 {
     margin-top: 0;
-    color: #89cff0;
+    color: #ffffff;
 }
 /* Square off the upload frame specifically, and keep any preview image inside it tidy. */
-.st-key-left_frame { aspect-ratio: 1 / 1; overflow-y: auto; }
-.st-key-left_frame [data-testid="stImage"] img {
+.st-key-left_frame, .st-key-compare_left_frame { aspect-ratio: 1 / 1; overflow-y: auto; }
+.st-key-left_frame [data-testid="stImage"] img,
+.st-key-compare_left_frame [data-testid="stImage"] img {
     max-height: 240px;
     object-fit: contain;
     border-radius: 12px;
 }
 
+/* Per-model result cards in Compare mode - key is dynamic (one per model/pipeline
+   combo), so match on the "st-key-compare_card_" prefix instead of an exact class. */
+div[class*="st-key-compare_card_"] {
+    background: #0b1a33 !important;
+    border-radius: 14px !important;
+    border-color: rgba(45, 212, 191, 0.3) !important;
+}
+.model-card-title {
+    font-weight: 700;
+    color: #f2f5f9;
+    margin-bottom: .5rem;
+    font-size: .95rem;
+}
+
 .raw-output {
     font-family: 'Courier New', monospace;
     font-size: 1.3rem;
-    color: #9ca3af;
-    background: #0f1a20;
-    border: 1px solid #26313a;
+    color: #9fb3c8;
+    background: #0b1a33;
+    border: 1px solid rgba(45, 212, 191, 0.3);
     border-radius: 14px;
     padding: .6rem 1rem;
     display: inline-block;
@@ -130,38 +163,62 @@ h1 a, h2 a, h3 a, h4 a, h5 a, h6 a { display: none !important; }
     font-family: 'Courier New', monospace;
     font-size: 1.6rem;
     font-weight: 700;
-    color: #f5f5f5;
-    background: #0f1a20;
+    color: #f2f5f9;
+    background: #0b1a33;
     border-radius: 14px;
     padding: .5rem 1.1rem;
     display: inline-block;
-    border: 1px solid #26313a;
+    border: 1px solid rgba(45, 212, 191, 0.5);
 }
 .pill {
     display: inline-block;
-    background: #16222c;
-    color: #89cff0;
-    border: 1px solid #223544;
+    background: #16294f;
+    color: #2dd4bf;
+    border: 1px solid rgba(45, 212, 191, 0.3);
     border-radius: 999px;
     padding: .2rem .8rem;
     font-size: .8rem;
     margin: .15rem .25rem .15rem 0;
     transition: transform .15s ease, border-color .15s ease;
 }
-.pill:hover { transform: translateY(-1px); border-color: #89cff0; }
+.pill:hover { transform: translateY(-1px); border-color: #2dd4bf; }
+
+.verify-box {
+    border-radius: 14px;
+    padding: .7rem 1rem;
+    margin-top: .6rem;
+    border: 1px solid;
+}
+.verify-box.match { background: rgba(45, 212, 191, 0.08); border-color: rgba(45, 212, 191, 0.5); }
+.verify-box.suggested { background: rgba(245, 158, 11, 0.08); border-color: rgba(245, 158, 11, 0.5); }
+.verify-box.no-match { background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.5); }
+.verify-badge {
+    font-weight: 700;
+    font-size: .85rem;
+    letter-spacing: .04em;
+}
+.verify-badge.match { color: #2dd4bf; }
+.verify-badge.suggested { color: #f59e0b; }
+.verify-badge.no-match { color: #ef4444; }
+.verify-detail {
+    font-family: 'Courier New', monospace;
+    font-size: .85rem;
+    color: #9fb3c8;
+    margin-top: .35rem;
+}
 
 /* Style the model-select radio as soft rounded pill buttons */
 div[data-testid="stRadio"] > div[role="radiogroup"] {
     gap: .5rem;
 }
 div[data-testid="stRadio"] label {
-    background: #161616;
-    border: 1px solid #26313a;
+    background: #132646;
+    border: 1px solid rgba(45, 212, 191, 0.25);
     border-radius: 999px;
     padding: .45rem 1.2rem;
     transition: transform .15s ease, border-color .15s ease;
 }
-div[data-testid="stRadio"] label:hover { transform: translateY(-1px); border-color: #89cff0; }
+div[data-testid="stRadio"] label:hover { transform: translateY(-1px); border-color: #2dd4bf; }
 </style>
 """
 
@@ -192,14 +249,24 @@ def trocr_pipeline_checkpoint(pipeline: str):
     return os.path.join(ckpt_dir, "final")
 
 
-def trocr_baseline_dir():
-    """The checkpoint dir the single (non-toggled) TrOCR path actually loads: the real
-    full finetune once it's done, falling back to the 15%-data pilot checkpoint until
-    then. Returns (dir, is_full_finetune)."""
-    full = trocr_pipeline_checkpoint("baseline")
+def trocr_pilot_checkpoint(pipeline: str):
+    """Pilot (15%-data) TrOCR checkpoint dir for `pipeline`, or None if that pilot run
+    hasn't finished either (no DONE.txt under checkpoint/doctor/trocr_pilot/<pipeline>/)."""
+    ckpt_dir = os.path.join(_TROCR_PILOT_CKPT_ROOT, pipeline)
+    if not os.path.isfile(os.path.join(ckpt_dir, "DONE.txt")):
+        return None
+    return os.path.join(ckpt_dir, "final")
+
+
+def trocr_pipeline_dir(pipeline: str):
+    """The checkpoint dir to load for `pipeline`: its full finetune once done, falling
+    back to that same pipeline's 15%-data pilot checkpoint until then. Returns
+    (dir_or_None, is_full_finetune)."""
+    full = trocr_pipeline_checkpoint(pipeline)
     if full is not None:
         return full, True
-    return _TROCR_PILOT_CKPT_DIR, False
+    pilot = trocr_pilot_checkpoint(pipeline)
+    return pilot, False
 
 
 @st.cache_resource
@@ -276,39 +343,18 @@ def run_trocr(model, processor, device, image: Image.Image) -> str:
     return processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
 
 
-def _levenshtein(a: str, b: str) -> int:
-    if len(a) < len(b):
-        a, b = b, a
-    if len(b) == 0:
-        return len(a)
-    previous_row = list(range(len(b) + 1))
-    for i, ca in enumerate(a):
-        current_row = [i + 1]
-        for j, cb in enumerate(b):
-            insertions = previous_row[j + 1] + 1
-            deletions = current_row[j] + 1
-            substitutions = previous_row[j] + (ca != cb)
-            current_row.append(min(insertions, deletions, substitutions))
-        previous_row = current_row
-    return previous_row[-1]
-
-
 def compute_cer(prediction: str, ground_truth: str):
     """Character Error Rate = edit distance / len(ground truth). None if no ground truth."""
     gt = ground_truth.strip()
     pred = prediction.strip()
     if len(gt) == 0:
         return None
-    return _levenshtein(pred, gt) / len(gt)
+    return levenshtein_distance(pred, gt) / len(gt)
 
 
-def main():
-    st.set_page_config(page_title="Doctor Handwriting OCR", page_icon="\U0001FA7A", layout="wide")
-    st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
-
-    trocr_ckpt_dir, trocr_is_full = trocr_baseline_dir()
-    trocr_weights_path = os.path.join(trocr_ckpt_dir, "model.safetensors")
-    trocr_available = os.path.isfile(trocr_weights_path)
+def render_single_mode():
+    trocr_ckpt_dir, trocr_is_full = trocr_pipeline_dir("baseline")
+    trocr_available = trocr_ckpt_dir is not None and os.path.isfile(os.path.join(trocr_ckpt_dir, "model.safetensors"))
     crnn_summary = load_crnn_summary()
     trocr_summary = load_trocr_summary()
 
@@ -343,17 +389,22 @@ def main():
 
     pipeline_name = "clhaa" if use_clhaa else "baseline"
 
+    if model_choice == "TrOCR":
+        # Recompute for the toggled pipeline - the value from trocr_pipeline_dir("baseline")
+        # above was only ever used to decide whether "TrOCR" appears as an option at all.
+        trocr_ckpt_dir, trocr_is_full = trocr_pipeline_dir(pipeline_name)
+
     if model_choice == "CRNN" and not crnn_summary.empty and pipeline_name in crnn_summary.index:
         val_cer = crnn_summary.loc[pipeline_name, "best_val_cer"]
         st.caption(f"CRNN / {pipeline_name} - full finetune, val CER {val_cer:.2%}")
     elif model_choice == "TrOCR" and trocr_is_full:
-        if not trocr_summary.empty and "baseline" in trocr_summary.index:
-            val_cer = trocr_summary.loc["baseline", "best_val_cer"]
-            st.caption(f"TrOCR / baseline - full finetune, val CER {val_cer:.2%}")
+        if not trocr_summary.empty and pipeline_name in trocr_summary.index:
+            val_cer = trocr_summary.loc[pipeline_name, "best_val_cer"]
+            st.caption(f"TrOCR / {pipeline_name} - full finetune, val CER {val_cer:.2%}")
         else:
-            st.caption("TrOCR / baseline - full finetune")
+            st.caption(f"TrOCR / {pipeline_name} - full finetune")
     elif model_choice == "TrOCR":
-        st.caption("TrOCR / baseline - pilot checkpoint (15% of training data), full finetune not done yet")
+        st.caption(f"TrOCR / {pipeline_name} - pilot checkpoint (15% of training data), full finetune not done yet")
 
     vocabulary, variants = load_lexicon()
 
@@ -361,7 +412,7 @@ def main():
 
     with col_left:
         with st.container(border=True, key="left_frame"):
-            st.markdown("<h4>1. \U0001F4E4 Upload image</h4>", unsafe_allow_html=True)
+            st.markdown('<h4><span class="dot"></span>1. \U0001F4E4 Upload image</h4>', unsafe_allow_html=True)
             uploaded = st.file_uploader(
                 "Single word image",
                 type=["png", "jpg", "jpeg", "bmp"],
@@ -397,7 +448,7 @@ def main():
     if uploaded is None:
         with col_right:
             with st.container(border=True, key="right_frame"):
-                st.markdown("<h4>2. \U0001F50D Result</h4>", unsafe_allow_html=True)
+                st.markdown('<h4><span class="dot"></span>2. \U0001F50D Result</h4>', unsafe_allow_html=True)
                 st.caption("Upload an image on the left to see the OCR result here.")
         return
 
@@ -413,7 +464,7 @@ def main():
             st.error(f"{model_choice} inference failed: {e}")
             st.stop()
 
-    candidates = suggest_corrections(raw_prediction, vocabulary)
+    result = verify_against_database(raw_prediction, vocabulary)
 
     with col_right:
         with st.container(border=True, key="right_frame"):
@@ -437,30 +488,67 @@ def main():
 
             st.divider()
 
-            # ---- 3. Mock-database correction ----
-            st.markdown("<h4>3. \U0001F499 Mock-database correction</h4>", unsafe_allow_html=True)
-            if candidates:
-                best_name, best_score = candidates[0]
-                st.markdown(f'<span class="corrected-output">{html.escape(best_name)}</span>', unsafe_allow_html=True)
-                st.caption(f"similarity {best_score:.0%}")
-                if len(candidates) > 1:
-                    st.write("")
-                    st.caption("Other candidates")
+            # ---- 3. Mock-database verification ----
+            st.markdown('<h4><span class="dot"></span>3. \U0001F499 Mock-database verification</h4>', unsafe_allow_html=True)
+
+            if result["status"] == "empty":
+                st.markdown('<span class="raw-output">no input</span>', unsafe_allow_html=True)
+            else:
+                st.caption(f'Step 1 - Normalize: "{raw_prediction}" → "{result["normalized"]}"')
+
+                if result["status"] == "match":
+                    st.caption(f'Step 2 - Exact match search: DB contains "{result["normalized"]}"? → YES')
+                    st.markdown(f'<span class="corrected-output">{html.escape(result["matched_name"])}</span>', unsafe_allow_html=True)
                     st.markdown(
-                        "".join(f'<span class="pill">{html.escape(name)} ({score:.0%})</span>' for name, score in candidates[1:]),
+                        '<div class="verify-box match"><span class="verify-badge match">✅ MATCH</span></div>',
                         unsafe_allow_html=True,
                     )
-            else:
-                st.markdown('<span class="raw-output">no close match</span>', unsafe_allow_html=True)
+                else:
+                    st.caption(f'Step 2 - Exact match search: DB contains "{result["normalized"]}"? → NO')
+                    st.caption(
+                        f'Step 3 - Fuzzy match (Levenshtein): closest is '
+                        f'"{result["matched_name"]}" (distance {result["distance"]})'
+                    )
+                    st.markdown(f'<span class="corrected-output">{html.escape(result["matched_name"])}</span>', unsafe_allow_html=True)
 
-            # ---- 4. Forms & strengths on record (only when there's a match) ----
-            if candidates:
-                best_name = candidates[0][0]
+                    if result["status"] == "suggested":
+                        st.markdown(
+                            f'<div class="verify-box suggested">'
+                            f'<span class="verify-badge suggested">⚠️ SUGGESTED</span>'
+                            f'<div class="verify-detail">"{html.escape(raw_prediction)}" → "{html.escape(result["matched_name"])}"<br>'
+                            f'Confidence: {result["confidence"]} (distance {result["distance"]})</div>'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        st.markdown(
+                            f'<div class="verify-box no-match">'
+                            f'<span class="verify-badge no-match">❌ NO MATCH</span>'
+                            f'<div class="verify-detail">Closest DB entry is too far '
+                            f'(distance {result["distance"]}) to suggest with confidence.</div>'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
+
+                    if result["alternatives"]:
+                        st.write("")
+                        st.caption("Other candidates")
+                        st.markdown(
+                            "".join(
+                                f'<span class="pill">{html.escape(name)} (d={d})</span>'
+                                for name, d in result["alternatives"]
+                            ),
+                            unsafe_allow_html=True,
+                        )
+
+            # ---- 4. Forms & strengths on record (only when there's a match/suggestion) ----
+            if result["status"] in ("match", "suggested"):
+                best_name = result["matched_name"]
                 rows = variants.get(best_name, [])
                 if rows:
                     st.divider()
                     st.markdown(
-                        f"<h4>4. \U0001F4CB {html.escape(best_name)} - forms &amp; strengths on record</h4>",
+                        f'<h4><span class="dot"></span>4. \U0001F4CB {html.escape(best_name)} - forms &amp; strengths on record</h4>',
                         unsafe_allow_html=True,
                     )
                     st.dataframe(
@@ -471,6 +559,163 @@ def main():
                         hide_index=True,
                         use_container_width=True,
                     )
+
+
+# The 4 combinations this mode compares: both architectures x both preprocessing
+# pipelines. Order controls both inference order and the 2x2 card grid layout below.
+COMPARE_COMBOS = [
+    ("CRNN", "baseline"),
+    ("CRNN", "clhaa"),
+    ("TrOCR", "baseline"),
+    ("TrOCR", "clhaa"),
+]
+
+
+def _run_combo(model_name, pipeline, image, crnn_summary, trocr_summary):
+    """Run one (model, pipeline) combo on `image`. Returns a result dict describing
+    what happened - unavailable (no finished checkpoint), error (loading/inference
+    raised), or ok (with the decoded prediction and, if known, its val CER)."""
+    row = {"model": model_name, "pipeline": pipeline}
+    try:
+        if model_name == "CRNN":
+            if crnn_pipeline_checkpoint(pipeline) is None:
+                row["status"] = "unavailable"
+                return row
+            module, device = load_crnn(pipeline)
+            image_for_model = PREP_FUNCS[pipeline](image)
+            row["prediction"] = run_crnn(module, device, image_for_model)
+            if not crnn_summary.empty and pipeline in crnn_summary.index:
+                row["val_cer"] = crnn_summary.loc[pipeline, "best_val_cer"]
+        else:
+            ckpt_dir, is_full = trocr_pipeline_dir(pipeline)
+            if ckpt_dir is None or not os.path.isfile(os.path.join(ckpt_dir, "model.safetensors")):
+                row["status"] = "unavailable"
+                return row
+            model, processor, device = load_trocr(ckpt_dir)
+            image_for_model = PREP_FUNCS[pipeline](image)
+            row["prediction"] = run_trocr(model, processor, device, image_for_model)
+            row["is_full"] = is_full
+            if is_full and not trocr_summary.empty and pipeline in trocr_summary.index:
+                row["val_cer"] = trocr_summary.loc[pipeline, "best_val_cer"]
+    except Exception as e:
+        row["status"] = "error"
+        row["error"] = str(e)
+        return row
+    row["status"] = "ok"
+    return row
+
+
+def render_compare_mode():
+    st.markdown(
+        '<div class="app-header"><h1>\U0001F4CA Compare All Models</h1>'
+        '<p>Upload a single handwritten word to run it through all 4 model / preprocessing '
+        'combinations side by side.</p></div>',
+        unsafe_allow_html=True,
+    )
+
+    crnn_summary = load_crnn_summary()
+    trocr_summary = load_trocr_summary()
+
+    col_left, col_right = st.columns(2, gap="large")
+
+    with col_left:
+        with st.container(border=True, key="compare_left_frame"):
+            st.markdown('<h4><span class="dot"></span>1. \U0001F4E4 Upload image</h4>', unsafe_allow_html=True)
+            uploaded = st.file_uploader(
+                "Single word image",
+                type=["png", "jpg", "jpeg", "bmp"],
+                label_visibility="collapsed",
+                key="compare_uploader",
+            )
+
+            image = None
+            if uploaded is not None:
+                try:
+                    image = Image.open(uploaded)
+                    image.load()  # force-decode now, so a corrupted file fails here, not later mid-pipeline
+                except Exception as e:
+                    st.error(f"Could not read this file as an image: {e}")
+                    st.stop()
+                st.image(image, use_container_width=True)
+
+            ground_truth = st.text_input(
+                "Correct answer (optional)",
+                placeholder="Type the true word here to score every model",
+                key="compare_ground_truth",
+            )
+
+    if uploaded is None:
+        with col_right:
+            with st.container(border=True, key="compare_right_frame"):
+                st.markdown('<h4><span class="dot"></span>2. \U0001F4CA Comparison</h4>', unsafe_allow_html=True)
+                st.caption("Upload an image on the left to compare all 4 models here.")
+        return
+
+    with st.spinner("Running all 4 models..."):
+        rows = [_run_combo(m, p, image, crnn_summary, trocr_summary) for m, p in COMPARE_COMBOS]
+
+    for row in rows:
+        if row["status"] == "ok" and ground_truth:
+            cer = compute_cer(row["prediction"], ground_truth)
+            row["cer"] = cer
+            row["accuracy"] = max(0.0, 1 - cer) * 100
+
+    with col_right:
+        with st.container(border=True, key="compare_right_frame"):
+            st.markdown('<h4><span class="dot"></span>2. \U0001F4CA Comparison</h4>', unsafe_allow_html=True)
+            if not ground_truth:
+                st.caption("Type the correct answer on the left to see accuracy / CER for each model.")
+
+            grid_cols = st.columns(2, gap="medium")
+            for i, row in enumerate(rows):
+                label = f'{row["model"]} / {row["pipeline"]}'
+                with grid_cols[i % 2]:
+                    with st.container(border=True, key=f'compare_card_{row["model"]}_{row["pipeline"]}'):
+                        st.markdown(f'<div class="model-card-title">{html.escape(label)}</div>', unsafe_allow_html=True)
+
+                        if row["status"] == "unavailable":
+                            st.caption("Checkpoint not available in this deployment.")
+                            continue
+                        if row["status"] == "error":
+                            st.error(row["error"])
+                            continue
+
+                        st.markdown(
+                            f'<span class="raw-output">{html.escape(row["prediction"]) or "(empty)"}</span>',
+                            unsafe_allow_html=True,
+                        )
+                        caption_bits = []
+                        if "val_cer" in row:
+                            caption_bits.append(f'val CER {row["val_cer"]:.2%}')
+                        if row["model"] == "TrOCR" and not row.get("is_full", True):
+                            caption_bits.append("pilot checkpoint")
+                        if caption_bits:
+                            st.caption(" · ".join(caption_bits))
+
+                        if "accuracy" in row:
+                            st.write("")
+                            m1, m2 = st.columns(2)
+                            m1.metric("Accuracy", f'{row["accuracy"]:.1f}%')
+                            m2.metric("CER", f'{row["cer"]:.2%}')
+
+
+def main():
+    st.set_page_config(page_title="Doctor Handwriting OCR", page_icon="\U0001FA7A", layout="wide")
+    st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
+    mode = st.radio(
+        "Mode",
+        ["Single model", "Compare all models"],
+        horizontal=True,
+        label_visibility="collapsed",
+        key="app_mode",
+    )
+    st.write("")
+
+    if mode == "Compare all models":
+        render_compare_mode()
+    else:
+        render_single_mode()
 
 
 if __name__ == "__main__":
