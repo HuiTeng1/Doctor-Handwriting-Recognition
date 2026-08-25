@@ -140,6 +140,23 @@ def ensure_test_preprocessed(pipeline_name, filenames):
     return out_dir
 
 
+def ensure_winner_images(model_name, pipeline_name):
+    """Regenerate preprocessed_doctor_test/<pipeline>/ for the current winner, even when
+    that model/pipeline's score is already recorded and the scoring loop below will skip
+    it entirely. Without this, a machine that received final_test_scores_full.csv via git
+    (but not the gitignored preprocessed_doctor_test/ folders themselves) has no way to
+    get those folders back short of deleting a row from the CSV to force a full rerun.
+    Cheap - just filters test.csv and writes any missing images, no checkpoint loading."""
+    if model_name == "CRNN":
+        crnn_dir = os.path.join(_HERE, "..", "normal", "crnn")
+        sys.path.insert(0, crnn_dir)
+        from modeling import CHARS
+        test_df = load_and_filter_test(chars_filter=CHARS)
+    else:
+        test_df = load_and_filter_test(chars_filter=None)
+    ensure_test_preprocessed(pipeline_name, test_df["filename"].tolist())
+
+
 def eval_crnn(pipeline_name, ckpt_path, device="cpu"):
     crnn_dir = os.path.join(_HERE, "..", "normal", "crnn")
     sys.path.insert(0, crnn_dir)
@@ -295,6 +312,8 @@ def run_eval(crnn_results_path, trocr_results_path, out_filename, include_wer=Tr
         if winners_only:
             crnn_candidates = [c for c in crnn_candidates if c[4]]
         for crnn_pipeline, crnn_val_cer, crnn_val_cer_jiwer, crnn_ckpt, is_winner in crnn_candidates:
+            if is_winner:
+                ensure_winner_images("CRNN", crnn_pipeline)
             if ("CRNN", crnn_pipeline) in done_keys:
                 print(f"[final_test] CRNN {crnn_pipeline}: already in {out_filename}, skipping")
                 continue
@@ -318,6 +337,8 @@ def run_eval(crnn_results_path, trocr_results_path, out_filename, include_wer=Tr
         if winners_only:
             trocr_candidates = [c for c in trocr_candidates if c[4]]
         for trocr_pipeline, trocr_val_cer, trocr_val_cer_jiwer, trocr_ckpt, is_winner in trocr_candidates:
+            if is_winner:
+                ensure_winner_images("TrOCR", trocr_pipeline)
             if ("TrOCR", trocr_pipeline) in done_keys:
                 print(f"[final_test] TrOCR {trocr_pipeline}: already in {out_filename}, skipping")
                 continue
