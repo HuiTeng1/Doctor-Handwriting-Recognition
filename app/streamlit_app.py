@@ -21,6 +21,7 @@ Usage:
     streamlit run streamlit_app.py
 """
 import html
+import math
 import os
 import re
 import sys
@@ -219,6 +220,121 @@ div[data-testid="stRadio"] label {
     transition: transform .15s ease, border-color .15s ease;
 }
 div[data-testid="stRadio"] label:hover { transform: translateY(-1px); border-color: #2dd4bf; }
+
+/* ---------- Micro-interactions: hover lift on the main frames and compare cards ---------- */
+.st-key-left_frame, .st-key-right_frame,
+.st-key-compare_left_frame, .st-key-compare_right_frame {
+    transition: box-shadow .2s ease;
+}
+.st-key-left_frame:hover, .st-key-right_frame:hover,
+.st-key-compare_left_frame:hover, .st-key-compare_right_frame:hover {
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.32);
+}
+div[class*="st-key-compare_card_"] {
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+div[class*="st-key-compare_card_"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
+/* Upload dropzone - dashed teal border instead of Streamlit's default grey box, so it
+   visually invites a drag-and-drop instead of looking like a disabled form field. */
+[data-testid="stFileUploaderDropzone"] {
+    background: #0b1a33 !important;
+    border: 1.5px dashed rgba(45, 212, 191, 0.4) !important;
+    border-radius: 14px !important;
+    transition: border-color .2s ease, background .2s ease;
+}
+[data-testid="stFileUploaderDropzone"]:hover {
+    border-color: rgba(45, 212, 191, 0.85) !important;
+    background: #0e2140 !important;
+}
+
+/* Alerts (st.error) - rounded to match the rest of the deck instead of Streamlit's
+   square-cornered default. */
+div[data-testid="stAlert"] { border-radius: 14px !important; }
+
+/* Winner badge + glow, used in Compare mode to call out the best-scoring model at a
+   glance instead of making the reader scan four cards of numbers. */
+.winner-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #2dd4bf, #14b8a6);
+    color: #05261f;
+    font-weight: 700;
+    font-size: .72rem;
+    letter-spacing: .04em;
+    border-radius: 999px;
+    padding: .15rem .65rem;
+    margin-bottom: .5rem;
+}
+
+/* Stepper - horizontal step indicator for the 4-step mock-database verification
+   pipeline (normalize -> exact match -> fuzzy match -> decision), replacing a plain
+   stack of caption lines with something scannable at a glance. */
+.stepper { display: flex; align-items: center; margin: .8rem 0 .3rem 0; }
+.step { display: flex; flex-direction: column; align-items: center; flex: 0 0 auto; }
+.step-circle {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .78rem; font-weight: 700;
+    border: 2px solid rgba(45, 212, 191, 0.4);
+    background: #0b1a33;
+    color: #2dd4bf;
+}
+.step-done .step-circle { background: #2dd4bf; border-color: #2dd4bf; color: #05261f; }
+.step-skip .step-circle { border-color: rgba(159, 179, 200, 0.3); color: #5a6d85; background: transparent; }
+.step-label {
+    font-size: .66rem;
+    color: #9fb3c8;
+    margin-top: .3rem;
+    text-align: center;
+    white-space: nowrap;
+}
+.step-done .step-label { color: #cbd5e1; }
+.step-line { flex: 1 1 auto; height: 2px; margin: 0 .35rem; margin-bottom: 1.15rem; }
+.step-line.done { background: rgba(45, 212, 191, 0.5); }
+.step-line.skip { background: rgba(159, 179, 200, 0.2); }
+
+/* Accuracy gauge - replaces a bare st.metric percentage with a ring so the OCR result
+   panel has one clear visual focal point instead of three same-weight numbers. */
+.gauge-wrap { display: flex; flex-direction: column; align-items: center; }
+.gauge-label { font-size: .72rem; color: #9fb3c8; margin-top: .25rem; letter-spacing: .03em; }
+
+/* Gauge + stat chips side by side, in the Result panel and each Compare-mode card. */
+.gauge-row { display: flex; align-items: center; gap: 1rem; margin-top: .5rem; flex-wrap: wrap; }
+.gauge-row-stats { margin-top: 0; flex: 1 1 90px; }
+
+/* Label/value chips laid out with flexbox instead of st.columns - used anywhere a
+   metric pair sits inside an already-nested column (e.g. each Compare-mode card),
+   so it wraps on its own via CSS instead of depending on a second level of Streamlit
+   column nesting, which is unreliable on narrow screens. */
+.stat-row { display: flex; gap: .7rem; margin-top: .5rem; flex-wrap: wrap; }
+.stat-chip { flex: 1 1 80px; min-width: 80px; }
+.stat-chip-label {
+    font-size: .72rem;
+    color: #9fb3c8;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.stat-chip-value { font-size: 1.15rem; font-weight: 700; color: #f2f5f9; margin-top: .1rem; }
+
+/* ---------- Responsive fallback for small screens ----------
+   Reported: a teammate running this on a smaller display couldn't see the CER value
+   at all - Streamlit's column layout doesn't reliably reflow narrow side-by-side
+   columns on its own, so widen this to force every column row (top-level and nested)
+   to stack into one column below this width instead of squeezing until something gets
+   clipped out of view. */
+@media (max-width: 900px) {
+    [data-testid="stHorizontalBlock"] { flex-direction: column !important; }
+    [data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+    }
+    .st-key-left_frame, .st-key-compare_left_frame { aspect-ratio: auto !important; }
+}
 </style>
 """
 
@@ -352,6 +468,79 @@ def compute_cer(prediction: str, ground_truth: str):
     return levenshtein_distance(pred, gt) / len(gt)
 
 
+def render_gauge(percent, label, size=104, stroke=9):
+    """Inline SVG ring gauge for a 0-100 percentage - stands in for a bare st.metric so
+    the result panel has one clear focal number instead of three same-weight ones.
+    Colour tracks the same High/Medium/Low bands used by verify_against_database's
+    confidence tiers, so a green ring and a MATCH badge always mean the same thing."""
+    percent = max(0.0, min(100.0, percent))
+    radius = (size - stroke) / 2
+    circumference = 2 * math.pi * radius
+    offset = circumference * (1 - percent / 100)
+    color = "#2dd4bf" if percent >= 70 else ("#f59e0b" if percent >= 40 else "#ef4444")
+    center = size / 2
+    return (
+        f'<div class="gauge-wrap"><svg width="{size}" height="{size}" viewBox="0 0 {size} {size}">'
+        f'<circle cx="{center}" cy="{center}" r="{radius}" fill="none" stroke="#16294f" stroke-width="{stroke}" />'
+        f'<circle cx="{center}" cy="{center}" r="{radius}" fill="none" stroke="{color}" stroke-width="{stroke}" '
+        f'stroke-linecap="round" stroke-dasharray="{circumference:.2f}" stroke-dashoffset="{offset:.2f}" '
+        f'transform="rotate(-90 {center} {center})" />'
+        f'<text x="{center}" y="{center + size * 0.07:.0f}" text-anchor="middle" font-size="{size * 0.22:.0f}" '
+        f'font-weight="700" fill="#f2f5f9" font-family="Inter, sans-serif">{percent:.0f}%</text>'
+        f'</svg><div class="gauge-label">{html.escape(label)}</div></div>'
+    )
+
+
+def render_stepper(result):
+    """Horizontal step indicator mirroring verify_against_database's 4-step pipeline
+    (normalize -> exact match -> fuzzy match -> decision). The fuzzy-match step renders
+    as skipped when step 2 already resolved things via an exact match."""
+    status = result["status"]
+    if status == "empty":
+        return ""
+
+    fuzzy_skipped = status == "match"
+    step_labels = ["Normalize", "Exact Match", "Fuzzy Match", "Decision"]
+    step_states = ["done", "done", "skip" if fuzzy_skipped else "done", "done"]
+
+    parts = ['<div class="stepper">']
+    for i, (label, state) in enumerate(zip(step_labels, step_states)):
+        mark = "✓" if state == "done" else "–"
+        parts.append(
+            f'<div class="step step-{state}"><div class="step-circle">{mark}</div>'
+            f'<div class="step-label">{label}</div></div>'
+        )
+        if i < len(step_labels) - 1:
+            line_state = "skip" if "skip" in (state, step_states[i + 1]) else "done"
+            parts.append(f'<div class="step-line {line_state}"></div>')
+    parts.append('</div>')
+    return "".join(parts)
+
+
+def render_stat_row(pairs):
+    """Label/value pairs as a flexbox row that wraps on its own via CSS (see .stat-row)
+    instead of via st.columns - used specifically where the pair would otherwise be a
+    second level of nested columns (e.g. inside each Compare-mode card), since that
+    nesting depth was the likely cause of a metric going invisible on a narrow screen."""
+    chips = "".join(
+        f'<div class="stat-chip"><div class="stat-chip-label">{html.escape(lbl)}</div>'
+        f'<div class="stat-chip-value">{html.escape(str(val))}</div></div>'
+        for lbl, val in pairs
+    )
+    return f'<div class="stat-row">{chips}</div>'
+
+
+def render_gauge_row(accuracy, extra_pairs, size=104, stroke=9):
+    """Accuracy gauge plus label/value chips side by side, as one HTML block - the same
+    visual pairing used in both Single and Compare mode, kept as a single st.markdown
+    call (no st.columns split) for the same small-screen-reflow reason render_stat_row
+    replaced st.columns: Compare mode's cards already sit inside two levels of nested
+    columns, and a third would be the least reliable to reflow on a narrow screen."""
+    gauge_html = render_gauge(accuracy, "Accuracy", size=size, stroke=stroke)
+    stats_html = render_stat_row(extra_pairs).replace('class="stat-row"', 'class="stat-row gauge-row-stats"')
+    return f'<div class="gauge-row">{gauge_html}{stats_html}</div>'
+
+
 def render_single_mode():
     trocr_ckpt_dir, trocr_is_full = trocr_pipeline_dir("baseline")
     trocr_available = trocr_ckpt_dir is not None and os.path.isfile(os.path.join(trocr_ckpt_dir, "model.safetensors"))
@@ -479,10 +668,13 @@ def render_single_mode():
             if cer is not None:
                 accuracy = max(0.0, 1 - cer) * 100
                 exact_match = raw_prediction.strip() == ground_truth.strip()
-                m1, m2, m3 = st.columns(3)
-                m1.metric("Accuracy", f"{accuracy:.1f}%")
-                m2.metric("CER", f"{cer:.2%}")
-                m3.metric("Exact match", "Yes" if exact_match else "No")
+                st.markdown(
+                    render_gauge_row(accuracy, [
+                        ("CER", f"{cer:.2%}"),
+                        ("Exact match", "Yes" if exact_match else "No"),
+                    ]),
+                    unsafe_allow_html=True,
+                )
             else:
                 st.caption("Type the correct answer on the left to see accuracy / CER here.")
 
@@ -494,21 +686,15 @@ def render_single_mode():
             if result["status"] == "empty":
                 st.markdown('<span class="raw-output">no input</span>', unsafe_allow_html=True)
             else:
-                st.caption(f'Step 1 - Normalize: "{raw_prediction}" → "{result["normalized"]}"')
+                st.markdown(render_stepper(result), unsafe_allow_html=True)
 
                 if result["status"] == "match":
-                    st.caption(f'Step 2 - Exact match search: DB contains "{result["normalized"]}"? → YES')
                     st.markdown(f'<span class="corrected-output">{html.escape(result["matched_name"])}</span>', unsafe_allow_html=True)
                     st.markdown(
                         '<div class="verify-box match"><span class="verify-badge match">✅ MATCH</span></div>',
                         unsafe_allow_html=True,
                     )
                 else:
-                    st.caption(f'Step 2 - Exact match search: DB contains "{result["normalized"]}"? → NO')
-                    st.caption(
-                        f'Step 3 - Fuzzy match (Levenshtein): closest is '
-                        f'"{result["matched_name"]}" (distance {result["distance"]})'
-                    )
                     st.markdown(f'<span class="corrected-output">{html.escape(result["matched_name"])}</span>', unsafe_allow_html=True)
 
                     if result["status"] == "suggested":
@@ -540,6 +726,19 @@ def render_single_mode():
                             ),
                             unsafe_allow_html=True,
                         )
+
+                with st.expander("Show verification steps"):
+                    st.caption(f'Step 1 - Normalize: "{raw_prediction}" → "{result["normalized"]}"')
+                    if result["status"] == "match":
+                        st.caption(f'Step 2 - Exact match search: DB contains "{result["normalized"]}"? → YES')
+                    else:
+                        st.caption(f'Step 2 - Exact match search: DB contains "{result["normalized"]}"? → NO')
+                        st.caption(
+                            f'Step 3 - Fuzzy match (Levenshtein): closest is '
+                            f'"{result["matched_name"]}" (distance {result["distance"]})'
+                        )
+                    st.caption(f'Step 4 - Decision: {result["status"].upper()}'
+                               + (f' ({result["confidence"]} confidence)' if result["confidence"] else ''))
 
             # ---- 4. Forms & strengths on record (only when there's a match/suggestion) ----
             if result["status"] in ("match", "suggested"):
@@ -660,17 +859,50 @@ def render_compare_mode():
             row["cer"] = cer
             row["accuracy"] = max(0.0, 1 - cer) * 100
 
+    # Lowest CER wins - surfaced as a one-line summary plus a per-card badge/glow, so
+    # the reader gets the headline answer before scanning all 4 cards' raw numbers.
+    winner_key = None
+    scored_rows = [r for r in rows if r["status"] == "ok" and "cer" in r]
+    if scored_rows:
+        winner = min(scored_rows, key=lambda r: r["cer"])
+        winner_key = (winner["model"], winner["pipeline"])
+
     with col_right:
         with st.container(border=True, key="compare_right_frame"):
             st.markdown('<h4><span class="dot"></span>2. \U0001F4CA Comparison</h4>', unsafe_allow_html=True)
             if not ground_truth:
                 st.caption("Type the correct answer on the left to see accuracy / CER for each model.")
+            elif winner_key:
+                st.markdown(
+                    f'<div class="verify-box match"><span class="verify-badge match">'
+                    f'🏆 Best match: {winner_key[0]} / {winner_key[1]}</span></div>',
+                    unsafe_allow_html=True,
+                )
 
             grid_cols = st.columns(2, gap="medium")
             for i, row in enumerate(rows):
                 label = f'{row["model"]} / {row["pipeline"]}'
+                card_key = f'compare_card_{row["model"]}_{row["pipeline"]}'
+                is_winner = winner_key == (row["model"], row["pipeline"])
                 with grid_cols[i % 2]:
-                    with st.container(border=True, key=f'compare_card_{row["model"]}_{row["pipeline"]}'):
+                    if is_winner:
+                        # Container `key` deterministically becomes the "st-key-<key>"
+                        # class Streamlit generates, so this scoped rule reaches exactly
+                        # this card and no other - see the CUSTOM_CSS comment above.
+                        st.markdown(
+                            f'<style>.st-key-{card_key} {{ border-color: rgba(45, 212, 191, 0.9) !important; '
+                            f'box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.4), 0 8px 22px rgba(45, 212, 191, 0.2) !important; }}</style>',
+                            unsafe_allow_html=True,
+                        )
+                    with st.container(border=True, key=card_key):
+                        # Always reserve the badge's slot, hidden when not the winner -
+                        # otherwise the winner card is taller than its neighbours (extra
+                        # badge line) and the grid rows stop lining up at the top.
+                        badge_style = "" if is_winner else " visibility:hidden;"
+                        st.markdown(
+                            f'<span class="winner-badge" style="{badge_style}">🏆 Best match</span>',
+                            unsafe_allow_html=True,
+                        )
                         st.markdown(f'<div class="model-card-title">{html.escape(label)}</div>', unsafe_allow_html=True)
 
                         if row["status"] == "unavailable":
@@ -693,10 +925,10 @@ def render_compare_mode():
                             st.caption(" · ".join(caption_bits))
 
                         if "accuracy" in row:
-                            st.write("")
-                            m1, m2 = st.columns(2)
-                            m1.metric("Accuracy", f'{row["accuracy"]:.1f}%')
-                            m2.metric("CER", f'{row["cer"]:.2%}')
+                            st.markdown(
+                                render_gauge_row(row["accuracy"], [("CER", f'{row["cer"]:.2%}')], size=84, stroke=8),
+                                unsafe_allow_html=True,
+                            )
 
 
 def main():

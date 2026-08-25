@@ -1,0 +1,28 @@
+# Full project environment: preprocessing, training, evaluation, and the Streamlit app.
+# For the lightweight, CPU-only, app-only subset (Streamlit Cloud deployment), see
+# app/requirements.txt instead - it pins the CPU build of torch/torchvision and skips
+# everything below that training/evaluation scripts need but the app does not.
+#
+# torch/torchvision here are left unpinned to a build (CPU vs CUDA) - install the
+# CUDA build matching your machine's driver, e.g.:
+#   pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu121
+# GPU is effectively required for TrOCR training/fine-tuning in reasonable time; CRNN
+# trains fine on CPU.
+
+streamlit==1.62.0
+torch==2.5.1
+torchvision==0.20.1
+pytorch-lightning==2.6.5
+torchmetrics==1.9.0
+transformers==4.46.3
+tokenizers==0.20.3
+ctc-decoder==1.0.1
+pillow==12.2.0
+pandas==3.0.5
+numpy==2.5.1
+opencv-python
+scikit-image==0.26.0
+imagehash==4.3.2
+jiwer==4.0.0
+evaluate==0.4.6
+tqdm==4.70.0
