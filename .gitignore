@@ -231,3 +231,7 @@ data/doctor/doctor_raw/Doctor’s Handwritten Prescription BD dataset/
 # --- the 3 raw zips themselves, if placed directly in doctor_raw/ for
 # ensure_source_folders_extracted() to auto-unzip - also never meant to be committed ---
 data/doctor/doctor_raw/*.zip
+
+# --- Internal working notes, not part of the handed-in submission (RUN_ORDER.md is) ---
+DATA_PROVENANCE.md
+KNOWN_ISSUES.md

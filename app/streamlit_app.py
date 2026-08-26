@@ -127,8 +127,12 @@ h1, h2, h3, h4, .app-header h1 { font-family: 'Playfair Display', serif; }
     margin-top: 0;
     color: #ffffff;
 }
-/* Square off the upload frame specifically, and keep any preview image inside it tidy. */
-.st-key-left_frame, .st-key-compare_left_frame { aspect-ratio: 1 / 1; overflow-y: auto; }
+/* Square off the single-model upload frame, which has enough content (image + inputs +
+   gauges) to fill it. The Compare-mode left frame only holds an image + one text input,
+   so forcing it square left a large empty gap below the input - size it to its content
+   instead. */
+.st-key-left_frame { aspect-ratio: 1 / 1; overflow-y: auto; }
+.st-key-compare_left_frame { overflow-y: auto; }
 .st-key-left_frame [data-testid="stImage"] img,
 .st-key-compare_left_frame [data-testid="stImage"] img {
     max-height: 240px;
@@ -333,7 +337,7 @@ div[data-testid="stAlert"] { border-radius: 14px !important; }
         flex: 1 1 100% !important;
         min-width: 100% !important;
     }
-    .st-key-left_frame, .st-key-compare_left_frame { aspect-ratio: auto !important; }
+    .st-key-left_frame { aspect-ratio: auto !important; }
 }
 </style>
 """
@@ -861,21 +865,27 @@ def render_compare_mode():
 
     # Lowest CER wins - surfaced as a one-line summary plus a per-card badge/glow, so
     # the reader gets the headline answer before scanning all 4 cards' raw numbers.
-    winner_key = None
+    # Ties (equal CER, e.g. all 4 models score 0%) are all marked as winners instead
+    # of arbitrarily picking whichever combo happens to be first in COMPARE_COMBOS.
+    winner_keys = set()
     scored_rows = [r for r in rows if r["status"] == "ok" and "cer" in r]
     if scored_rows:
-        winner = min(scored_rows, key=lambda r: r["cer"])
-        winner_key = (winner["model"], winner["pipeline"])
+        best_cer = min(r["cer"] for r in scored_rows)
+        winner_keys = {
+            (r["model"], r["pipeline"]) for r in scored_rows if abs(r["cer"] - best_cer) < 1e-9
+        }
 
     with col_right:
         with st.container(border=True, key="compare_right_frame"):
             st.markdown('<h4><span class="dot"></span>2. \U0001F4CA Comparison</h4>', unsafe_allow_html=True)
             if not ground_truth:
                 st.caption("Type the correct answer on the left to see accuracy / CER for each model.")
-            elif winner_key:
+            elif winner_keys:
+                winner_labels = " &amp; ".join(f"{m} / {p}" for m, p in sorted(winner_keys))
+                summary_prefix = "Best match" if len(winner_keys) == 1 else "Tied best match"
                 st.markdown(
                     f'<div class="verify-box match"><span class="verify-badge match">'
-                    f'🏆 Best match: {winner_key[0]} / {winner_key[1]}</span></div>',
+                    f'🏆 {summary_prefix}: {winner_labels}</span></div>',
                     unsafe_allow_html=True,
                 )
 
@@ -883,7 +893,7 @@ def render_compare_mode():
             for i, row in enumerate(rows):
                 label = f'{row["model"]} / {row["pipeline"]}'
                 card_key = f'compare_card_{row["model"]}_{row["pipeline"]}'
-                is_winner = winner_key == (row["model"], row["pipeline"])
+                is_winner = (row["model"], row["pipeline"]) in winner_keys
                 with grid_cols[i % 2]:
                     if is_winner:
                         # Container `key` deterministically becomes the "st-key-<key>"

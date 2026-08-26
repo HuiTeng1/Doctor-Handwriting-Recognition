@@ -9,10 +9,18 @@ ALTERNATIVES to each other, not all required - having any one complete group cov
 Stage 2's needs even if the others are entirely missing (see combineDataset.py's own
 comment for which path applies).
 
+Also verifies every git-tracked file (source, docs, configs, small CSVs/checkpoints -
+everything `git ls-files` knows about) is actually present on disk, skipping image
+files. This catches a botched submission zip/copy (a file silently dropped) rather than
+the missing-handoff-data case the rest of this script targets; images are excluded
+because the dataset image folders are gitignored and already covered by the file-count
+checks above, not by git.
+
 Usage:
     python check_setup.py
 """
 import os
+import subprocess
 import sys
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -29,6 +37,28 @@ def count_files(path):
     for _, _, files in os.walk(path):
         total += len(files)
     return total
+
+
+_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tif", ".tiff", ".webp"}
+
+
+def git_tracked_files_missing_on_disk():
+    """Every path `git ls-files` knows about that isn't actually on disk right now,
+    skipping images (see module docstring). Returns [] (not an error) if this isn't a
+    git checkout, since a handed-over zip/copy has no .git to ask."""
+    try:
+        output = subprocess.check_output(
+            ["git", "ls-files"], cwd=_HERE, text=True, stderr=subprocess.DEVNULL
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+    missing = []
+    for tracked in output.splitlines():
+        if not tracked or os.path.splitext(tracked)[1].lower() in _IMAGE_EXTS:
+            continue
+        if not os.path.isfile(os.path.join(_HERE, tracked)):
+            missing.append(tracked)
+    return missing
 
 
 # (relative label for display, absolute path, kind, expected file count if a dir)
@@ -151,6 +181,17 @@ def main():
             print(f"  [{'OK  ' if ok else 'MISS'}] {label}{detail}")
             if not ok:
                 missing.append(label)
+
+    print("\n[Git-tracked files present on disk (everything but images)]")
+    tracked_missing = git_tracked_files_missing_on_disk()
+    if tracked_missing is None:
+        print("  [SKIP] not a git checkout - can't cross-check against `git ls-files`")
+    elif tracked_missing:
+        for f in tracked_missing:
+            print(f"  [MISS] {f}")
+        missing.extend(f"git-tracked: {f}" for f in tracked_missing)
+    else:
+        print("  [OK  ] every non-image file git knows about is present")
 
     print("\n" + "=" * 70)
     if missing:
